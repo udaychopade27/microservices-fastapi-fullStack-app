@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: store
+      POSTGRES_USER: storeuser
+      POSTGRES_PASSWORD: storepass
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U storeuser"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
+  auth:
+    build: ./auth-service
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    
+
+  inventory:
+    build: ./inventory-microservice
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    
+
+  orders:
+    build: ./order-microservice
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+        
+    ports:
+      - "8002:8002"
+
+
+  payment:
+    build: ./payment-microservice
+    ports:
+      - "8003:8003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8004:80"
+    env_file: .env
+    depends_on:
+      - auth
+      - inventory
+      - orders
+      - payment
+
+volumes:
+  pgdata:
