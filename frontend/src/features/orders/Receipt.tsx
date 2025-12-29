@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type OrderItem = {
   product_id: number;
-  product_name: string;
+  product_name?: string;
   qty: number;
   price: number;
   line_total: number;
@@ -43,7 +43,6 @@ export default function Receipt() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Invalid route
   if (!id) {
     return <Navigate to="/orders" replace />;
   }
@@ -69,7 +68,12 @@ export default function Receipt() {
       {/* META */}
       <div className="text-sm text-gray-700 space-y-1">
         <p><strong>Order ID:</strong> {order.id}</p>
-        <p><strong>Status:</strong> <span className="font-semibold">{order.status}</span></p>
+        <p>
+          <strong>Status:</strong>{' '}
+          <span className={order.status === 'PAID' ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+            {order.status}
+          </span>
+        </p>
         <p>
           <strong>Date:</strong>{' '}
           {new Date(order.created_at).toLocaleString()}
@@ -81,22 +85,26 @@ export default function Receipt() {
         <thead className="bg-gray-100">
           <tr>
             <th className="p-2 text-left">Product</th>
-            <th className="p-2 text-left">Code</th>
+            <th className="p-2 text-left">SKU</th>
             <th className="p-2 text-right">Qty</th>
-            <th className="p-2 text-right">Price</th>
-            <th className="p-2 text-right">Total</th>
+            <th className="p-2 text-right">Unit Price</th>
+            <th className="p-2 text-right">Line Total</th>
           </tr>
         </thead>
         <tbody>
           {order.items.map(item => (
             <tr key={item.product_id} className="border-t">
               <td className="p-2">
-                  {item.product_name || `Product #${item.product_id}`}
+                {item.product_name || `Product #${item.product_id}`}
               </td>
-              <td className="p-2">{item.product_name}</td>
+              <td className="p-2 text-gray-500">
+                #{item.product_id}
+              </td>
               <td className="p-2 text-right">{item.qty}</td>
-              <td className="p-2 text-right">${item.price}</td>
-              <td className="p-2 text-right">${item.line_total}</td>
+              <td className="p-2 text-right">${item.price.toFixed(2)}</td>
+              <td className="p-2 text-right font-semibold">
+                ${item.line_total.toFixed(2)}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -110,7 +118,7 @@ export default function Receipt() {
 
       <div className="flex justify-between text-lg font-bold">
         <span>Amount Paid</span>
-        <span>${order.total}</span>
+        <span>${order.total.toFixed(2)}</span>
       </div>
 
       <div className="pt-4 text-green-700 font-semibold text-center">

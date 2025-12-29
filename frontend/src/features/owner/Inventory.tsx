@@ -49,7 +49,7 @@ export default function Inventory() {
     }
   };
 
-  // UPDATE PRICE
+  // UPDATE PRICE (Enter key)
   const updatePrice = async (id: string, price: number) => {
     try {
       await apiFetch(`/api/products/${id}`, {
@@ -62,7 +62,7 @@ export default function Inventory() {
     }
   };
 
-  // REFILL STOCK (⚠️ qty, not amount)
+  // REFILL STOCK (Enter key)
   const refillStock = async (id: string, qty: number) => {
     try {
       await apiFetch(`/api/refill/${id}`, {
@@ -129,23 +129,33 @@ export default function Inventory() {
           >
             <strong>{p.name}</strong>
 
+            {/* PRICE UPDATE */}
             <div>
               <label className="block text-xs">Price</label>
               <input
                 className="input"
                 type="number"
                 defaultValue={p.price}
-                onBlur={e =>
-                  updatePrice(p.id, Number(e.target.value))
-                }
+                placeholder="Enter price & press Enter"
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    updatePrice(
+                      p.id,
+                      Number((e.target as HTMLInputElement).value)
+                    );
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
               />
             </div>
 
+            {/* STOCK */}
             <div>
               <label className="block text-xs">Stock</label>
               <span>{p.stock}</span>
             </div>
 
+            {/* REFILL */}
             <div>
               <label className="block text-xs">Refill Quantity</label>
               <input

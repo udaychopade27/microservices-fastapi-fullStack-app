@@ -168,6 +168,13 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
     if not o:
         raise HTTPException(404)
 
+    # Fetch product catalog
+    try:
+        products = requests.get(f"{INVENTORY_URL}/products").json()
+        product_map = {p["id"]: p["name"] for p in products}
+    except:
+        product_map = {}
+
     return {
         "id": o.id,
         "user_id": o.user_id,
@@ -177,12 +184,15 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         "items": [
             {
                 "product_id": i.product_id,
+                "product_name": product_map.get(i.product_id, f"Product #{i.product_id}"),
                 "qty": i.qty,
                 "price": i.price,
                 "line_total": i.line_total
-            } for i in o.items
+            }
+            for i in o.items
         ]
     }
+
 
 
 @app.get("/health")
