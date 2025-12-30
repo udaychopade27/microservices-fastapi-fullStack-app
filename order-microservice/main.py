@@ -7,7 +7,7 @@ from pydantic import BaseModel
 import requests
 import os
 from datetime import datetime
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST, REGISTRY
 from fastapi.responses import Response
 from metrics import (
     http_requests_total,
@@ -71,7 +71,7 @@ def health():
 
 @app.get("/api/orders/metrics")
 def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+    return Response(generate_latest(REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
 # ----------------------------------------
 # Checkout
