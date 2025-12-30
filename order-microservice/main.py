@@ -1,5 +1,5 @@
 from typing import Dict
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from db import Base, engine, get_db
 from models import Order, OrderItem
@@ -19,7 +19,6 @@ from metrics import (
 )
 import time
 
-
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Order Service")
@@ -27,64 +26,71 @@ app = FastAPI(title="Order Service")
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://inventory:8001")
 PAYMENT_URL = os.getenv("PAYMENT_URL", "http://payment:8003")
 
+# ----------------------------------------
+# Models
+# ----------------------------------------
 
 class CheckoutItem(BaseModel):
     product_id: int
     qty: int
 
-
 class CheckoutRequest(BaseModel):
     user_id: str
     items: list[CheckoutItem]
+
+# ----------------------------------------
+# Prometheus Middleware (SRE Safe)
+# ----------------------------------------
+
 @app.middleware("http")
-async def prometheus_middleware(request, call_next):
+async def prometheus_middleware(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
     duration = time.time() - start
 
+    path = request.url.path
+    if path.startswith("/api/orders/"):
+        path = "/api/orders/{id}"
+
     http_requests_total.labels(
         request.method,
-        request.url.path,
-        response.status_code
+        path,
+        str(response.status_code)
     ).inc()
 
-    http_request_latency.labels(
-        request.url.path
-    ).observe(duration)
+    http_request_latency.labels(path).observe(duration)
 
     return response
 
+# ----------------------------------------
+# Checkout
+# ----------------------------------------
 
 @app.post("/api/orders/checkout")
 def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
-    # -------------------------------
-    # STEP 1 — Load products & validate
-    # -------------------------------
+    # Step 1 — Load Products
     try:
-        products = requests.get(f"{INVENTORY_URL}/products", timeout=5).json()
+        products = requests.get(f"{INVENTORY_URL}/api/inventory/products", timeout=5).json()
     except:
         raise HTTPException(502, "Inventory service unavailable")
 
-    product_map = {p["id"]: p for p in products}
+    product_map = {int(p["id"]): p for p in products if isinstance(p, dict)}
 
     total = 0
     for i in data.items:
         product = product_map.get(i.product_id)
         if not product:
             raise HTTPException(404, f"Product {i.product_id} not found")
-
         total += product["price"] * i.qty
 
-    # -------------------------------
-    # STEP 2 — Reserve Inventory
-    # -------------------------------
+    # Step 2 — Reserve Inventory
     reserved_items = []
 
     for i in data.items:
         try:
             r = requests.post(
-                f"{INVENTORY_URL}/reserve/{i.product_id}",
+                f"{INVENTORY_URL}/api/inventory/reserve/{i.product_id}",
                 params={"qty": i.qty},
                 timeout=5
             ).json()
@@ -92,53 +98,42 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
             raise HTTPException(502, "Inventory service unavailable")
 
         if r.get("status") != "reserved":
-            # rollback anything already reserved
             for x in reserved_items:
                 requests.post(
-                    f"{INVENTORY_URL}/release/{x.product_id}",
+                    f"{INVENTORY_URL}/api/inventory/release/{x.product_id}",
                     params={"qty": x.qty}
                 )
-
             raise HTTPException(400, f"Product {i.product_id} out of stock")
 
         reserved_items.append(i)
 
-    # -------------------------------
-    # STEP 3 — Call Payment
-    # -------------------------------
+    # Step 3 — Call Payment
     try:
         pay = requests.post(
-            f"{PAYMENT_URL}/pay",
-            json={
-                "user_id": data.user_id,
-                "amount": total
-            },
+            f"{PAYMENT_URL}/api/payments/pay",
+            json={"user_id": data.user_id, "amount": total},
             timeout=5
         ).json()
     except:
-        # Payment service down → rollback inventory
         for i in reserved_items:
             requests.post(
-                f"{INVENTORY_URL}/release/{i.product_id}",
+                f"{INVENTORY_URL}/api/inventory/release/{i.product_id}",
                 params={"qty": i.qty}
             )
-
         raise HTTPException(502, "Payment service unavailable")
 
     payment_status = pay.get("status", "failed")
     status = "PAID" if payment_status == "success" else "FAILED"
-    # -------------------------------
-    # STEP 3.5 — Update Metrics
-    # -------------------------------
+
+    # Step 3.5 — Business Metrics
+    orders_created.inc()
     if status == "PAID":
         orders_paid.inc()
         order_amount.inc(total)
     else:
         orders_failed.inc()
-    orders_created.inc()
-    # -------------------------------
-    # STEP 4 — Create Order
-    # -------------------------------
+
+    # Step 4 — Create Order
     order = Order(
         user_id=data.user_id,
         total=total,
@@ -150,25 +145,17 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
 
-    # -------------------------------
-    # STEP 5 — If payment failed → release inventory
-    # -------------------------------
+    # Step 5 — Release if failed
     if status == "FAILED":
         for i in reserved_items:
             requests.post(
-                f"{INVENTORY_URL}/release/{i.product_id}",
+                f"{INVENTORY_URL}/api/inventory/release/{i.product_id}",
                 params={"qty": i.qty}
             )
 
-        return {
-            "order_id": order.id,
-            "status": "FAILED",
-            "total": total
-        }
+        return {"order_id": order.id, "status": "FAILED", "total": total}
 
-    # -------------------------------
-    # STEP 6 — Save Order Items
-    # -------------------------------
+    # Step 6 — Save Order Items
     for i in data.items:
         product = product_map[i.product_id]
         price = product["price"]
@@ -183,23 +170,19 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
     db.commit()
 
-    return {
-        "order_id": order.id,
-        "status": "PAID",
-        "total": total
-    }
+    return {"order_id": order.id, "status": "PAID", "total": total}
 
-    
+# ----------------------------------------
+# Queries
+# ----------------------------------------
+
 @app.get("/api/orders/all")
 def get_all_orders(db: Session = Depends(get_db)):
     return db.query(Order).all()
 
-
-
 @app.get("/api/orders/{user_id}")
 def get_orders(user_id: str, db: Session = Depends(get_db)):
     return db.query(Order).filter(Order.user_id == user_id).all()
-
 
 @app.get("/api/orders/by-id/{order_id}")
 def get_order(order_id: int, db: Session = Depends(get_db)):
@@ -209,16 +192,12 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
     product_map = {}
     try:
-        response = requests.get(f"{INVENTORY_URL}/api/inventory/products", timeout=5)
-        response.raise_for_status()
-        products = response.json()
-        
+        products = requests.get(f"{INVENTORY_URL}/api/inventory/products", timeout=5).json()
         for p in products:
-            if isinstance(p, dict) and "id" in p and "name" in p:
-                product_map[int(p["id"])] = str(p["name"])
-                
-    except Exception:
-        pass  # Fallback to Product #ID
+            if isinstance(p, dict):
+                product_map[int(p["id"])] = p["name"]
+    except:
+        pass
 
     return {
         "id": o.id,
@@ -238,11 +217,13 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         ]
     }
 
-
+# ----------------------------------------
+# Health & Metrics
+# ----------------------------------------
 
 @app.get("/api/orders/health")
-def health():       
-    return {"status": "order ok"}  
+def health():
+    return {"status": "order ok"}
 
 @app.get("/api/orders/metrics")
 def metrics():
