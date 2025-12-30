@@ -145,7 +145,7 @@ def release(product_id: int, qty: int, db: Session = Depends(get_db)):
 
 
 
-@app.get("/metrics")
+@app.get("/api/inventory/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

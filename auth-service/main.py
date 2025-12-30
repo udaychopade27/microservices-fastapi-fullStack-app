@@ -133,7 +133,7 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
 # ===============================
 # METRICS
 # ===============================
-@app.get("/metrics")
+@app.get("/api/auth/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 

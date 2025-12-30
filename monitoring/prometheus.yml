@@ -3,17 +3,21 @@ global:
 
 scrape_configs:
   - job_name: "auth"
+    metrics_path: /api/auth/metrics
     static_configs:
       - targets: ["auth:8000"]
 
   - job_name: "inventory"
+    metrics_path: /api/inventory/metrics
     static_configs:
       - targets: ["inventory:8001"]
 
   - job_name: "orders"
+    metrics_path: /api/orders/metrics
     static_configs:
       - targets: ["orders:8002"]
 
   - job_name: "payment"
+    metrics_path: /api/payments/metrics
     static_configs:
       - targets: ["payment:8003"]

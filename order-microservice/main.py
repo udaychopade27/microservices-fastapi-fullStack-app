@@ -243,7 +243,7 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 @app.get("/api/orders/health")
 def health():       
     return {"status": "order ok"}  
- 
-@app.get("/metrics")
+
+@app.get("/api/orders/metrics")
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
