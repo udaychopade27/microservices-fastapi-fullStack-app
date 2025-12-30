@@ -20,7 +20,7 @@ export default function Login() {
         access_token: string;
         user_id: string;
         role: 'CLIENT' | 'OWNER';
-      }>('/auth/login', {
+      }>('/api/auth/login', {
         method: 'POST',
         skipAuth: true,
         body: JSON.stringify({ username, password }),

@@ -3,6 +3,7 @@ version: "3.9"
 services:
   postgres:
     image: postgres:15
+    container_name: microservice-db-postgres
     environment:
       POSTGRES_DB: store
       POSTGRES_USER: storeuser
@@ -16,30 +17,39 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - microservices-network
 
 
   auth:
     build: ./auth-service
+    container_name: auth-microservice
     env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8000:8000"
-    
+    networks:
+      - microservices-network  
+      - monitoring_monitoring-network  
 
   inventory:
     build: ./inventory-microservice
+    container_name: inventory-microservice
     env_file: .env
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "8001:8001"
-    
+    networks:
+      - microservices-network
+      - monitoring_monitoring-network
 
   orders:
     build: ./order-microservice
+    container_name: orders-microservice
     env_file: .env
     depends_on:
       postgres:
@@ -47,18 +57,27 @@ services:
         
     ports:
       - "8002:8002"
+    networks:
+      - microservices-network
+      - monitoring_monitoring-network
 
 
   payment:
     build: ./payment-microservice
+    container_name: payment-microservice
+    env_file: .env
     ports:
       - "8003:8003"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - microservices-network
+      - monitoring_monitoring-network
 
   frontend:
     build: ./frontend
+    container_name: frontend-microservice
     ports:
       - "8004:80"
     env_file: .env
@@ -67,6 +86,16 @@ services:
       - inventory
       - orders
       - payment
+    networks:
+      - microservices-network
+      - monitoring_monitoring-network
 
 volumes:
   pgdata:
+
+networks:
+  microservices-network:  
+    driver: bridge
+  monitoring_monitoring-network:
+    driver: bridge
+    external: true

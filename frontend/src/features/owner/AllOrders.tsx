@@ -10,7 +10,7 @@ export default function AllOrders() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    apiFetch<Order[]>(`/orders/all`)
+    apiFetch<Order[]>(`/api/orders/all`)
       .then(setOrders)
       .catch(err => setError(err.message || 'Failed to load orders'))
       .finally(() => setLoading(false));

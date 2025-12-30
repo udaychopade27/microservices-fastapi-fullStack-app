@@ -1,3 +1,4 @@
+from typing import Dict
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from db import Base, engine, get_db
@@ -6,6 +7,18 @@ from pydantic import BaseModel
 import requests
 import os
 from datetime import datetime
+from fastapi.responses import Response
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from metrics import (
+    http_requests_total,
+    http_request_latency,
+    orders_created,
+    orders_paid,
+    orders_failed,
+    order_amount
+)
+import time
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -23,8 +36,26 @@ class CheckoutItem(BaseModel):
 class CheckoutRequest(BaseModel):
     user_id: str
     items: list[CheckoutItem]
+@app.middleware("http")
+async def prometheus_middleware(request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
 
-@app.post("/orders/checkout")
+    http_requests_total.labels(
+        request.method,
+        request.url.path,
+        response.status_code
+    ).inc()
+
+    http_request_latency.labels(
+        request.url.path
+    ).observe(duration)
+
+    return response
+
+
+@app.post("/api/orders/checkout")
 def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
     # -------------------------------
@@ -96,7 +127,15 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
     payment_status = pay.get("status", "failed")
     status = "PAID" if payment_status == "success" else "FAILED"
-
+    # -------------------------------
+    # STEP 3.5 — Update Metrics
+    # -------------------------------
+    if status == "PAID":
+        orders_paid.inc()
+        order_amount.inc(total)
+    else:
+        orders_failed.inc()
+    orders_created.inc()
     # -------------------------------
     # STEP 4 — Create Order
     # -------------------------------
@@ -151,29 +190,35 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
     }
 
     
-@app.get("/orders/all")
+@app.get("/api/orders/all")
 def get_all_orders(db: Session = Depends(get_db)):
     return db.query(Order).all()
 
 
 
-@app.get("/orders/{user_id}")
+@app.get("/api/orders/{user_id}")
 def get_orders(user_id: str, db: Session = Depends(get_db)):
     return db.query(Order).filter(Order.user_id == user_id).all()
 
 
-@app.get("/orders/by-id/{order_id}")
+@app.get("/api/orders/by-id/{order_id}")
 def get_order(order_id: int, db: Session = Depends(get_db)):
     o = db.query(Order).filter(Order.id == order_id).first()
     if not o:
         raise HTTPException(404)
 
-    # Fetch product catalog
+    product_map = {}
     try:
-        products = requests.get(f"{INVENTORY_URL}/products").json()
-        product_map = {p["id"]: p["name"] for p in products}
-    except:
-        product_map = {}
+        response = requests.get(f"{INVENTORY_URL}/api/inventory/products", timeout=5)
+        response.raise_for_status()
+        products = response.json()
+        
+        for p in products:
+            if isinstance(p, dict) and "id" in p and "name" in p:
+                product_map[int(p["id"])] = str(p["name"])
+                
+    except Exception:
+        pass  # Fallback to Product #ID
 
     return {
         "id": o.id,
@@ -195,6 +240,10 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
 
 
 
-@app.get("/health")
+@app.get("/api/orders/health")
 def health():       
-    return {"status": "order ok"}   
+    return {"status": "order ok"}  
+ 
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)

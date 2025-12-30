@@ -1,0 +1,19 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: "auth"
+    static_configs:
+      - targets: ["auth:8000"]
+
+  - job_name: "inventory"
+    static_configs:
+      - targets: ["inventory:8001"]
+
+  - job_name: "orders"
+    static_configs:
+      - targets: ["orders:8002"]
+
+  - job_name: "payment"
+    static_configs:
+      - targets: ["payment:8003"]

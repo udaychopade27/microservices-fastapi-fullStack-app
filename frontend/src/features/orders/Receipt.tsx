@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 type OrderItem = {
   product_id: number;
-  product_name?: string;
+  product_name: string;
   qty: number;
   price: number;
   line_total: number;
@@ -32,7 +32,7 @@ export default function Receipt() {
       return;
     }
 
-    apiFetch<Order>(`/orders/by-id/${id}`)
+    apiFetch<Order>(`/api/orders/by-id/${id}`)
       .then(res => {
         if (!res || !res.id) {
           throw new Error('Order not found');
@@ -88,7 +88,7 @@ export default function Receipt() {
             <th className="p-2 text-left">SKU</th>
             <th className="p-2 text-right">Qty</th>
             <th className="p-2 text-right">Unit Price</th>
-            <th className="p-2 text-right">Line Total</th>
+            <th className="p-2 text-right">Total Price</th>
           </tr>
         </thead>
         <tbody>

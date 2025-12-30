@@ -12,7 +12,7 @@ export default function ProductCatalog() {
   const { add } = useCart();
 
   useEffect(() => {
-    apiFetch<Product[]>('/api/products')
+    apiFetch<Product[]>('/api/inventory/products')
       .then(setProducts)
       .catch(err => setError(err.message || 'Failed to load products'))
       .finally(() => setLoading(false));

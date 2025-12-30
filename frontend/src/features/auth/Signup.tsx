@@ -10,7 +10,7 @@ export default function Signup() {
 
   const submit = async () => {
     try {
-      const res = await apiFetch<any>('/auth/register', {
+      const res = await apiFetch<any>('/api/auth/register', {
         method: 'POST',
         skipAuth: true,
         body: JSON.stringify({

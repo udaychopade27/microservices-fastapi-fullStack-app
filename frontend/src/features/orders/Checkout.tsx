@@ -31,7 +31,7 @@ export default function Checkout() {
         order_id: number;
         status: string;
         total: number;
-      }>('/orders/checkout', {
+      }>('/api/orders/checkout', {
         method: 'POST',
         body: JSON.stringify(payload)
       });

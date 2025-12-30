@@ -1,0 +1,34 @@
+version: '3'
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring-network
+      # - microservices-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - monitoring-network
+      # - microservices-network
+networks:
+    monitoring-network: 
+      driver: bridge
+    # microservices-network:
+    #   driver: bridge  
+    #   external: true
+volumes:
+  grafana-storage:

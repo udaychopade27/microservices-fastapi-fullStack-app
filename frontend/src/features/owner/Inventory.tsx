@@ -15,7 +15,7 @@ export default function Inventory() {
   const loadProducts = async () => {
     try {
       setLoading(true);
-      const data = await apiFetch<Product[]>('/api/products');
+      const data = await apiFetch<Product[]>('/api/inventory/products');
       setProducts(data);
     } catch (err: any) {
       setError(err.message);
@@ -31,7 +31,7 @@ export default function Inventory() {
   // ADD PRODUCT
   const addProduct = async () => {
     try {
-      await apiFetch('/api/products', {
+      await apiFetch('/api/inventory/products', {
         method: 'POST',
         body: JSON.stringify({
           name,
@@ -52,7 +52,7 @@ export default function Inventory() {
   // UPDATE PRICE (Enter key)
   const updatePrice = async (id: string, price: number) => {
     try {
-      await apiFetch(`/api/products/${id}`, {
+      await apiFetch(`/api/inventory/products/${id}`, {
         method: 'PUT',
         body: JSON.stringify({ price }),
       });
@@ -65,7 +65,7 @@ export default function Inventory() {
   // REFILL STOCK (Enter key)
   const refillStock = async (id: string, qty: number) => {
     try {
-      await apiFetch(`/api/refill/${id}`, {
+      await apiFetch(`/api/inventory/refill/${id}`, {
         method: 'POST',
         body: JSON.stringify({ qty }),
       });

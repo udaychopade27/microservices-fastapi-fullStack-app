@@ -21,7 +21,7 @@ export default function MyOrders() {
   useEffect(() => {
     if (!user) return;
 
-    apiFetch<Order[]>(`/orders/${user.id}`)
+    apiFetch<Order[]>(`/api/orders/${user.id}`)
       .then(setOrders)
       .catch(err => setError(err.message || 'Failed to load orders'))
       .finally(() => setLoading(false));

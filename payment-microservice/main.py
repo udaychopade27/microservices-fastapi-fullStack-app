@@ -1,14 +1,46 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
 from pydantic import BaseModel, Field
 import random
+import time
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
+from metrics import (
+    payments_total,
+    payments_success,
+    payments_failed,
+    payment_amount,
+    payment_latency,                        
+    http_requests_total, 
+    http_request_latency_seconds
+)
 
 app = FastAPI(title="Payment Service")
+
+# -----------------------------
+# Middleware
+# -----------------------------
+@app.middleware("http")
+async def prometheus_middleware(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration = time.time() - start
+
+    http_requests_total.labels(
+        request.method,
+        request.url.path,
+        response.status_code
+    ).inc()
+
+    http_request_latency_seconds.labels(
+        request.url.path
+    ).observe(duration)
+
+    return response
 
 
 # -----------------------------
 # Models
 # -----------------------------
-
 class PaymentRequest(BaseModel):
     user_id: str = Field(..., example="1ee45954-1461-475c-a0da-aee69b3ddbf2")
     amount: float = Field(..., gt=0, example=120.50)
@@ -20,54 +52,45 @@ class PaymentResponse(BaseModel):
 
 
 # -----------------------------
-# Health Check
+# Health
 # -----------------------------
-
-@app.get("/health")
+@app.get("/api/payments/health")
 def health():
     return {"status": "payment ok"}
 
 
 # -----------------------------
-# Payment
+# Pay
 # -----------------------------
-
-@app.post("/pay", response_model=PaymentResponse)
+@app.post("/api/payments/pay")
 def pay(data: PaymentRequest):
-    """
-    Simulated payment processor.
-    Always returns:
-    {
-      status: "success" | "failed",
-      amount: number
-    }
-    """
+    payments_total.inc()
 
-    # 80% success rate
+    time.sleep(random.uniform(0.05, 0.3))
     success = random.random() > 0.2
 
     if success:
-        return {
-            "status": "success",
-            "amount": data.amount
-        }
+        payments_success.inc()
+        payment_amount.inc(data.amount)
+        return {"status": "success", "amount": data.amount}
 
-    return {
-        "status": "failed",
-        "amount": data.amount
-    }
+    payments_failed.inc()
+    return {"status": "failed", "amount": data.amount}
 
 
 # -----------------------------
 # Refund
 # -----------------------------
-
-@app.post("/refund", response_model=PaymentResponse)
+@app.post("/api/payments/refund")
 def refund(data: PaymentRequest):
-    """
-    Refund always succeeds.
-    """
-    return {
-        "status": "refunded",
-        "amount": data.amount
-    }
+    payments_failed.inc()
+    payment_amount.inc(-data.amount)
+    return {"status": "refunded", "amount": data.amount}
+
+
+# -----------------------------
+# Metrics
+# -----------------------------
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
