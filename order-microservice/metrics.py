@@ -13,27 +13,9 @@ http_request_latency = Histogram(
     ["endpoint"]
 )
 
-# Business KPIs
-orders_created = Counter(
-    "orders_created_total",
-    "Total orders created"
-)
+# Orders
+orders_created = Counter("orders_created_total", "Total orders created")
+orders_paid = Counter("orders_paid_total", "Paid orders")
+orders_failed = Counter("orders_failed_total", "Failed orders")
 
-orders_paid = Counter(
-    "orders_paid_total",
-    "Paid orders"
-)
-
-orders_failed = Counter(
-    "orders_failed_total",
-    "Failed orders"
-)
-
-order_amount = Counter(
-    "order_amount_total",
-    "Total order revenue"
-)
-order_item_count = Histogram(
-    "order_item_count",
-    "Number of items per order"
-)
+order_amount = Counter("order_amount_total", "Total revenue")

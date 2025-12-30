@@ -7,8 +7,8 @@ from pydantic import BaseModel
 import requests
 import os
 from datetime import datetime
-from fastapi.responses import Response
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from fastapi.responses import Response
 from metrics import (
     http_requests_total,
     http_request_latency,
@@ -39,7 +39,7 @@ class CheckoutRequest(BaseModel):
     items: list[CheckoutItem]
 
 # ----------------------------------------
-# Prometheus Middleware (SRE Safe)
+# Prometheus Middleware
 # ----------------------------------------
 
 @app.middleware("http")
@@ -50,7 +50,7 @@ async def prometheus_middleware(request: Request, call_next):
 
     path = request.url.path
     if path.startswith("/api/orders/"):
-        path = "/api/orders/{id}"
+        path = "/api/orders/*"
 
     http_requests_total.labels(
         request.method,
@@ -61,6 +61,17 @@ async def prometheus_middleware(request: Request, call_next):
     http_request_latency.labels(path).observe(duration)
 
     return response
+# ----------------------------------------
+# Health & Metrics
+# ----------------------------------------
+
+@app.get("/api/orders/health")
+def health():
+    return {"status": "order ok"}
+
+@app.get("/api/orders/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 # ----------------------------------------
 # Checkout
@@ -69,7 +80,7 @@ async def prometheus_middleware(request: Request, call_next):
 @app.post("/api/orders/checkout")
 def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
-    # Step 1 — Load Products
+    # Load Products
     try:
         products = requests.get(f"{INVENTORY_URL}/api/inventory/products", timeout=5).json()
     except:
@@ -84,9 +95,8 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
             raise HTTPException(404, f"Product {i.product_id} not found")
         total += product["price"] * i.qty
 
-    # Step 2 — Reserve Inventory
+    # Reserve Inventory
     reserved_items = []
-
     for i in data.items:
         try:
             r = requests.post(
@@ -107,7 +117,7 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
         reserved_items.append(i)
 
-    # Step 3 — Call Payment
+    # Payment
     try:
         pay = requests.post(
             f"{PAYMENT_URL}/api/payments/pay",
@@ -125,7 +135,7 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
     payment_status = pay.get("status", "failed")
     status = "PAID" if payment_status == "success" else "FAILED"
 
-    # Step 3.5 — Business Metrics
+    # Metrics
     orders_created.inc()
     if status == "PAID":
         orders_paid.inc()
@@ -133,7 +143,7 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
     else:
         orders_failed.inc()
 
-    # Step 4 — Create Order
+    # Create Order
     order = Order(
         user_id=data.user_id,
         total=total,
@@ -145,7 +155,7 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(order)
 
-    # Step 5 — Release if failed
+    # Release if failed
     if status == "FAILED":
         for i in reserved_items:
             requests.post(
@@ -155,7 +165,7 @@ def checkout(data: CheckoutRequest, db: Session = Depends(get_db)):
 
         return {"order_id": order.id, "status": "FAILED", "total": total}
 
-    # Step 6 — Save Order Items
+    # Save Items
     for i in data.items:
         product = product_map[i.product_id]
         price = product["price"]
@@ -217,14 +227,4 @@ def get_order(order_id: int, db: Session = Depends(get_db)):
         ]
     }
 
-# ----------------------------------------
-# Health & Metrics
-# ----------------------------------------
 
-@app.get("/api/orders/health")
-def health():
-    return {"status": "order ok"}
-
-@app.get("/api/orders/metrics")
-def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
