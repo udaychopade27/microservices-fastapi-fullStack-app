@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
-from db import Base, engine, get_db
+from db import Base, engine, get_db, SessionLocal
 from models import User
 from auth import hash_password, verify_password, create_access_token
 from pydantic import BaseModel
@@ -34,7 +34,25 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
-
+    
+def create_default_admin():
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.username == "admin").first()
+        if not admin:
+            admin = User(
+                username="admin",
+                password_hash=hash_password("admin"),
+                role="OWNER"
+            )
+            db.add(admin)
+            db.commit()
+            print("Default admin user created: admin / admin")
+        else:
+            print("Admin user already exists")
+    finally:
+        db.close()
+create_default_admin() 
 
 # ===============================
 # PROMETHEUS MIDDLEWARE
