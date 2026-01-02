@@ -11,7 +11,6 @@ This setup follows **AWS best practices**:
 ---
 
 ## 🏗️ Architecture Overview
-```mermaid
 flowchart TB
 
     %% USERS
@@ -44,8 +43,8 @@ flowchart TB
     class FE,AUTH,ORDER,INVENTORY,PAYMENT private;
     class RDS data;
 
+---
 
-```
 ## 🔐 Security & Network Flow
 | Layer              | Security                  |
 | ------------------ | ------------------------- |
