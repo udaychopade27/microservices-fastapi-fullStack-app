@@ -7,7 +7,7 @@ REGISTRY_URL="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
 
 # 1. MOVE TO PROJECT ROOT
 # This gets the absolute path of the project root
-cd "$(dirname "$0")/../.."
+cd "$(dirname "$0")/.."
 PROJECT_ROOT=$(pwd)
 echo "Project Root is: $PROJECT_ROOT"
 
