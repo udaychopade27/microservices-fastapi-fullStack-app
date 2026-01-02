@@ -11,38 +11,39 @@ This setup follows **AWS best practices**:
 ---
 
 ## 🏗️ Architecture Overview
-flowchart TB
-
-    %% USERS
-    U[Internet Users]
-
-    %% NETWORK LAYER
-    U -->|HTTPS| ALB[Application Load Balancer<br>(Public Subnets)]
-
-    %% FRONTEND
-    ALB --> FE[Frontend Service<br>ECS Fargate<br>Private Subnets]
-
-    %% BACKEND SERVICES
-    FE --> AUTH[Auth Service<br>ECS Fargate]
-    FE --> ORDER[Order Service<br>ECS Fargate]
-    FE --> INVENTORY[Inventory Service<br>ECS Fargate]
-    FE --> PAYMENT[Payment Service<br>ECS Fargate]
-
-    %% DATABASE
-    AUTH --> RDS[(Amazon RDS<br>PostgreSQL)]
-    ORDER --> RDS
-    INVENTORY --> RDS
-    PAYMENT --> RDS
-
-    %% STYLES
-    classDef public fill:#cce5ff,stroke:#004085,stroke-width:2px;
-    classDef private fill:#d4edda,stroke:#155724,stroke-width:2px;
-    classDef data fill:#fff3cd,stroke:#856404,stroke-width:2px;
-
-    class ALB public;
-    class FE,AUTH,ORDER,INVENTORY,PAYMENT private;
-    class RDS data;
-
+```
+[ Internet ]
+      |
+      v
++----------------------+
+|  Application Load    |
+|  Balancer (Public)   |
++----------+-----------+
+           |
+           v
++----------------------+
+|   Frontend Service   |
+|   ECS Fargate        |
+|   (Private Subnet)   |
++----------+-----------+
+           |
+    +------+------+------+
+    |      |      |      |
+    v      v      v      v
++------+ +------+ +------+ +------+
+| Auth | |Order | |Stock | |Payment|
+| Svc  | | Svc  | | Svc  | |  Svc  |
++---+--+ +---+--+ +---+--+ +---+--+
+    |        |        |        |
+    +--------+--------+--------+
+             |
+             v
+      +------------------+
+      |   Amazon RDS     |
+      |   PostgreSQL    |
+      | (Private Subnet)|
+      +------------------+
+```
 ---
 
 ## 🔐 Security & Network Flow
@@ -166,63 +167,63 @@ Each backend service registers itself:
 ## 🚢 ECS Services
 ### Backend Services
 
-Launch type: Fargate
-Subnets: Private
-Public IP: ❌ Disabled
-Service discovery: ✅ Enabled
-Load balancer: ❌ None
+- Launch type: Fargate
+- Subnets: Private
+- Public IP: ❌ Disabled
+- Service discovery: ✅ Enabled
+- Load balancer: ❌ None
 
 
 ### Frontend Service
-Launch type: Fargate
-Subnets: Private
-Public IP: ❌ Disabled
-Load balancer: ✅ Application Load Balancer
-Target group type: IP
-Target port: 80
+- Launch type: Fargate
+- Subnets: Private
+- Public IP: ❌ Disabled
+- Load balancer: ✅ Application Load Balancer
+- Target group type: IP
+- Target port: 80
 
 ## 🌍 Application Load Balancer
-ALB Configuration
-Scheme: Internet-facing
-Subnets: Public (2 AZs)
-Security group:
-HTTP 80 → 0.0.0.0/0
-HTTPS 443 → 0.0.0.0/0
+- ALB Configuration
+- Scheme: Internet-facing
+- Subnets: Public (2 AZs)
+- Security group:
+- HTTP 80 → 0.0.0.0/0
+- HTTPS 443 → 0.0.0.0/0
 
-Listener
-HTTP :80 → Forward → frontend target group
-(Optional) HTTPS using ACM.
+- Listener
+- HTTP :80 → Forward → frontend target group
+- (Optional) HTTPS using ACM.
 
 ## 🔒 Networking & Security
-Security Groups
-ALB SG: Allows 80/443 from internet
-ECS SG: Allows traffic from ALB SG
-RDS SG: Allows port 5432 from ECS SG
-Network ACLs
-Public NACL for ALB subnets
-Private NACL for ECS & RDS subnets
-Allow ephemeral ports (1024–65535)
+**Security Groups**
+- ALB SG: Allows 80/443 from internet
+- ECS SG: Allows traffic from ALB SG
+- RDS SG: Allows port 5432 from ECS SG
+**Network ACLs**
+- Public NACL for ALB subnets
+- Private NACL for ECS & RDS subnets
+- Allow ephemeral ports (1024–65535)
 
 ## 🧪 Validation Checklist
 
-ECS services are RUNNING
-Target groups are healthy
-ALB DNS opens frontend
-Backend services communicate via Cloud Map
-CloudWatch logs show no errors
+- ECS services are RUNNING
+- Target groups are healthy
+- ALB DNS opens frontend
+- Backend services communicate via Cloud Map
+- CloudWatch logs show no errors
 
 ## 🔄 Scaling (Optional)
 
-Enable ECS service auto-scaling:
-Min tasks: 1
-Max tasks: 4
-CPU target: 60%
+- Enable ECS service auto-scaling:
+- Min tasks: 1
+- Max tasks: 4
+- CPU target: 60%
 
 ## 🔐 HTTPS (Recommended)
 
-Request certificate via AWS ACM
-Attach to ALB HTTPS listener
-Redirect HTTP → HTTPS
+- Request certificate via AWS ACM
+- Attach to ALB HTTPS listener
+- Redirect HTTP → HTTPS
 
 ## 🏁 Cleanup (Important)
 
