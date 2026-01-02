@@ -32,7 +32,12 @@ services:
       - "8000:8000"
     networks:
       - microservices-network  
-      - monitoring_monitoring-network  
+      - monitoring_monitoring-network 
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/auth/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
 
   inventory:
     build: ./inventory-microservice
@@ -46,6 +51,11 @@ services:
     networks:
       - microservices-network
       - monitoring_monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/inventory/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   orders:
     build: ./order-microservice
@@ -54,7 +64,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-        
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/api/orders/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
     ports:
       - "8002:8002"
     networks:
@@ -74,6 +88,11 @@ services:
     networks:
       - microservices-network
       - monitoring_monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/api/payment/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   frontend:
     build: ./frontend
@@ -89,6 +108,11 @@ services:
     networks:
       - microservices-network
       - monitoring_monitoring-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5  
 
 volumes:
   pgdata:

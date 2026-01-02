@@ -5,6 +5,8 @@ import os
 
 security = HTTPBearer()
 SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError("CRITICAL ERROR: JWT_SECRET environment variable is not set!")
 
 def get_current_user(token=Depends(security)):
     try:

@@ -3,6 +3,8 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
 DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError("CRITICAL ERROR: DATABASE_URL environment variable is not set!")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)

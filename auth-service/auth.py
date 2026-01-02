@@ -4,6 +4,9 @@ import os
 from datetime import datetime, timedelta
 
 SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError("CRITICAL ERROR: JWT_SECRET environment variable is not set!")
+
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

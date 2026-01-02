@@ -1,0 +1,70 @@
+server {
+    listen 80;
+    server_name _;
+    absolute_redirect off;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Important: ECS Resolver for internal DNS lookups
+    resolver 169.254.169.253 valid=10s;
+
+    # React SPA routing
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ===============================
+    # AUTH SERVICE
+    # ===============================
+    location /api/auth/ {
+        # Using variables forces Nginx to respect the 'resolver' above
+        set $auth_upstream http://${AUTH_SVC}:8000;
+        proxy_pass $auth_upstream;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Security: Remove Authorization header for login/register if needed
+        # proxy_set_header Authorization "";
+    }
+
+    # ===============================
+    # INVENTORY SERVICE
+    # ===============================
+    location /api/inventory/ {
+        set $inv_upstream http://${INV_SVC}:8001;
+        proxy_pass $inv_upstream;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # ===============================
+    # ORDER SERVICE
+    # ===============================
+    location /api/orders/ {
+        set $order_upstream http://${ORDER_SVC}:8002;
+        proxy_pass $order_upstream;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # ===============================
+    # PAYMENT SERVICE
+    # ===============================
+    location /api/payments/ {
+        set $pay_upstream http://${PAY_SVC}:8003;
+        proxy_pass $pay_upstream;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Authorization $http_authorization;
+    }
+}

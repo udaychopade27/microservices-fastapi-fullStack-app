@@ -24,7 +24,11 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Order Service")
 
 INVENTORY_URL = os.getenv("INVENTORY_URL", "http://inventory:8001")
+if not INVENTORY_URL:
+    raise ValueError("CRITICAL ERROR: INVENTORY_URL environment variable is not set!")
 PAYMENT_URL = os.getenv("PAYMENT_URL", "http://payment:8003")
+if not PAYMENT_URL:
+    raise ValueError("CRITICAL ERROR: PAYMENT_URL environment variable is not set!")
 
 # ----------------------------------------
 # Models
