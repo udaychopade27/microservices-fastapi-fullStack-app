@@ -25,12 +25,20 @@ class ProductCreate(BaseModel):
     name: str
     price: float
     stock: int
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    price: float
+    stock: int
 
 class PriceUpdate(BaseModel):
     price: float
 
 class RefillRequest(BaseModel):
     qty: int
+
+class Config:
+    orm_mode = True
     
 @app.middleware("http")
 async def prometheus_middleware(request: Request, call_next):
@@ -76,25 +84,38 @@ def update_price(pid: int,
     db.commit()
     return p
 
-@app.post("/api/inventory/products/bulk")
+@app.post(
+    "/api/inventory/products/bulk",
+    response_model=List[ProductResponse]
+)
 def add_products_bulk(
     products: List[ProductCreate],
     db: Session = Depends(get_db),
     user=Depends(owner_required)
 ):
-    created = []
+    try:
+        db_products = [
+            Product(
+                name=p.name,
+                price=p.price,
+                stock=p.stock
+            )
+            for p in products
+        ]
 
-    for p in products:
-        product = Product(
-            name=p.name,
-            price=p.price,
-            stock=p.stock
-        )
-        db.add(product)
-        created.append(product)
+        db.add_all(db_products)
+        db.commit()
 
-    db.commit()
-    return created
+        # Ensure IDs are loaded
+        for product in db_products:
+            db.refresh(product)
+
+        return db_products
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 
 @app.post("/api/inventory/refill/{pid}")

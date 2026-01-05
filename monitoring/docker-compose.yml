@@ -9,7 +9,7 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - monitoring-network
+      - monitoring_monitoring-network
       # - microservices-network
 
   grafana:
@@ -22,11 +22,12 @@ services:
     volumes:
       - grafana-storage:/var/lib/grafana
     networks:
-      - monitoring-network
+      - monitoring_monitoring-network
       # - microservices-network
 networks:
     monitoring-network: 
       driver: bridge
+      external: true
     # microservices-network:
     #   driver: bridge  
     #   external: true

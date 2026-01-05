@@ -11,7 +11,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "8005:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U storeuser"]
       interval: 5s
@@ -89,7 +89,7 @@ services:
       - microservices-network
       - monitoring_monitoring-network
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8003/api/payment/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/api/payments/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
