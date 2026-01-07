@@ -1,0 +1,15 @@
+version: "3.9"
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend-microservice
+    restart: unless-stopped
+    ports:
+      - "8004:80"
+    depends_on:
+      - auth
+      - inventory
+      - orders
+      - payment

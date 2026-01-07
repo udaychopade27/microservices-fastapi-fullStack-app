@@ -1,0 +1,71 @@
+version: "1"
+kind: Service
+metadata:
+  name: frontend-service
+  labels:
+    app: frontend
+spec:
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer 
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  labels:
+    app: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: uday27/frontend-microservice:2026.01.05
+          ports:
+            - containerPort: 80
+          envFrom:
+            - configMapRef:
+                name: microservices-config
+            # - secretRef:
+            #     name: microservices-secrets 
+          readinessProbe:
+            httpGet:  
+                  path: /health 
+                  port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:  
+                  path: /health 
+                  port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      # imagePullSecrets:
+      #   - name: regcred
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config
+data:
+  FRONTEND_ENV: "production"  
+  # API_GATEWAY_URL: "http://api-gateway-service:8080"
+  AUTH_SERVICE_URL: "http://auth-service:8000"
+  INVENTORY_SERVICE_URL: "http://inventory-microservice:8001"
+  ORDERS_SERVICE_URL: "http://orders-microservice:8002"
+  PAYMENT_SERVICE_URL: "http://payment-microservice:8003"
+---
+  

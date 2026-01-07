@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inventory-service
+  labels:
+    app: inventory
+spec:
+  selector:
+    app: inventory
+  ports:
+    - protocol: TCP
+      port: 8001
+      targetPort: 8001   #it does not have public access only frontend needs to connect it via cluster IP
+  type: ClusterIP 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inventory-deployment
+  labels:
+    app: inventory
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: inventory
+  template:
+    metadata:
+      labels:
+        app: inventory
+    spec:
+      containers:
+        - name: inventory
+          image: uday27/inventory-microservice:2026.01.05
+          ports:
+            - containerPort: 8001
+          envFrom:
+            - configMapRef:
+                name: microservices-config
+            # - secretRef:
+            #     name: microservices-secrets 
+          readinessProbe:
+            httpGet:  
+              path: /api/inventory/health   
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:  
+              path: /api/inventory/health   
+              port: 8001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      # imagePullSecrets:
+      #   - name: regcred
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config  
+  namespace: default
+data: 
+  # Add your configuration key-value pairs here
+  # For example:
+  # DATABASE_URL: "postgresql://user:password@hostname:port/dbname"
+  # REDIS_URL: "redis://hostname:port"
+  # OTHER_CONFIG: "value"
+      

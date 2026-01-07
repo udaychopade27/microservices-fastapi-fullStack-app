@@ -76,14 +76,14 @@ server {
 Build and run the React application. Ensure you map the internal port 80 to the host port 8004.
 
 ```bash
-docker-compose -f docker-compose.yml build --no-cache
+docker-compose -f docker-compose.yml -f dev.yml build --no-cache
 ```
 this will build docker images for all the services
 
 ---
 ### Step 2: Start all the Services Ensure your Python backends are running on their respective ports ($8000, 8001$, etc.).
 ```bash
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker-compose.yml -f dev.yml up -d
 ```
 ### Step 3:  verify all the services Running
 ```bash

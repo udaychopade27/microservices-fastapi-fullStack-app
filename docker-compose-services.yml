@@ -1,0 +1,75 @@
+services:
+  auth:
+    build: ./auth-service
+    container_name: auth-microservice
+    environment:
+      DATABASE_URL: postgresql://${AUTH_DB_USER}:${AUTH_DB_PASS}@auth-db:5432/auth
+      JWT_SECRET: ${JWT_SECRET}
+    env_file:
+      - .env
+    networks: [app-net]
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/auth/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
+
+  inventory:
+    build: ./inventory-microservice
+    container_name: inventory-microservice
+    environment:
+      DATABASE_URL: postgresql://${INV_DB_USER}:${INV_DB_PASS}@inventory-db:5432/inventory
+    networks: [app-net]
+    env_file:
+      - .env
+    depends_on:
+      inventory-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/api/inventory/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
+
+  orders:
+    build: ./order-microservice
+    container_name: orders-microservice
+    environment:
+      DATABASE_URL: postgresql://${ORD_DB_USER}:${ORD_DB_PASS}@orders-db:5432/orders
+      INVENTORY_URL: http://inventory:8001
+      PAYMENT_URL: http://payment:8003
+    networks: [app-net]
+    env_file:
+      - .env
+    depends_on:
+      orders-db:
+        condition: service_healthy
+      inventory:
+        condition: service_started
+      payment:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/api/orders/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 
+
+  payment:
+    build: ./payment-microservice
+    container_name: payment-microservice
+    environment:
+      DATABASE_URL: postgresql://${PAY_DB_USER}:${PAY_DB_PASS}@payments-db:5432/payments
+    networks: [app-net]
+    env_file:
+      - .env
+    depends_on:
+      payments-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8003/api/payments/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5 

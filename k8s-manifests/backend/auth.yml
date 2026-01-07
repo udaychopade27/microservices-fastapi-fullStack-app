@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  labels:
+    app: auth
+spec:
+  selector:
+    app: auth
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000   #it does not have public access only frontend needs to connect it via cluster IP
+  type: ClusterIP 
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-deployment
+  labels:
+    app: auth
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: uday27/auth-microservice:2026.01.05
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef:
+                name: microservices-config
+            # - secretRef:
+            #     name: microservices-secrets 
+          readinessProbe:
+            httpGet:  
+              path: /api/auth/health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:  
+              path: /api/auth/health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+      # imagePullSecrets:
+      #   - name: regcred
+--- 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: microservices-config
+data:
+  # Add your configuration data here
+  DATABASE_URL: "postgresql://storeuser:storepass@microservice-db-postgres:5432/store"
+  AUTH_SECRET_KEY: "your_secret_key_here"
+  AUTH_ALGORITHM: "HS256"
+  AUTH_ACCESS_TOKEN_EXPIRE_MINUTES: "30"  
+  LOG_LEVEL: "INFO"
+  # Add other config variables as needed
+
+# ---
+# apiVersion: v1
+# kind: Secret
+# metadata:
+#   name: microservices-secrets
+# type: Opaque
+# data:
+#   # Encode your secrets in base64 
+#   AUTH_SECRET_KEY: "eW91cl9zZWNyZXRfa2V5X2hlcmU="  # base64 encoded value of 'your_secret_key_here' 
+#   DATABASE_PASSWORD: "c3RvcmVwYXNz"  # base64 encoded value of 'storepass'
+#   # Add other secrets as needed
+      
