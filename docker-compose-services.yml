@@ -3,7 +3,7 @@ services:
     build: ./auth-service
     container_name: auth-microservice
     environment:
-      DATABASE_URL: postgresql://${AUTH_DB_USER}:${AUTH_DB_PASS}@auth-db:5432/auth
+      DATABASE_URL: ${AUTH_DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
     env_file:
       - .env
@@ -21,7 +21,7 @@ services:
     build: ./inventory-microservice
     container_name: inventory-microservice
     environment:
-      DATABASE_URL: postgresql://${INV_DB_USER}:${INV_DB_PASS}@inventory-db:5432/inventory
+      DATABASE_URL: ${INV_DATABASE_URL}
     networks: [app-net]
     env_file:
       - .env
@@ -38,7 +38,7 @@ services:
     build: ./order-microservice
     container_name: orders-microservice
     environment:
-      DATABASE_URL: postgresql://${ORD_DB_USER}:${ORD_DB_PASS}@orders-db:5432/orders
+      DATABASE_URL: ${ORD_DATABASE_URL}
       INVENTORY_URL: http://inventory:8001
       PAYMENT_URL: http://payment:8003
     networks: [app-net]
@@ -61,7 +61,7 @@ services:
     build: ./payment-microservice
     container_name: payment-microservice
     environment:
-      DATABASE_URL: postgresql://${PAY_DB_USER}:${PAY_DB_PASS}@payments-db:5432/payments
+      DATABASE_URL: ${PAY_DATABASE_URL}
     networks: [app-net]
     env_file:
       - .env

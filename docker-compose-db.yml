@@ -1,13 +1,15 @@
 services:
   auth-db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: auth_db
     environment:
-      POSTGRES_DB: auth
+      POSTGRES_DB: ${AUTH_DB_NAME}
       POSTGRES_USER: ${AUTH_DB_USER}
       POSTGRES_PASSWORD: ${AUTH_DB_PASS}
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d ${AUTH_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -16,14 +18,16 @@ services:
     networks: [app-net]
 
   inventory-db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: inventory_db
     environment:
-      POSTGRES_DB: inventory
+      POSTGRES_DB: ${INV_DB_NAME}
       POSTGRES_USER: ${INV_DB_USER}
       POSTGRES_PASSWORD: ${INV_DB_PASS}
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${INV_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${INV_DB_USER} -d ${INV_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -32,14 +36,16 @@ services:
     networks: [app-net]
 
   orders-db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: orders_db
     environment:
-      POSTGRES_DB: orders
+      POSTGRES_DB: ${ORD_DB_NAME}
       POSTGRES_USER: ${ORD_DB_USER}
       POSTGRES_PASSWORD: ${ORD_DB_PASS}
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${ORD_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${ORD_DB_USER} -d ${ORD_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -48,17 +54,20 @@ services:
     networks: [app-net]
 
   payments-db:
-    image: postgres:15
+    image: postgres:15-alpine
     container_name: payments_db
     environment:
-      POSTGRES_DB: payments
+      POSTGRES_DB: ${PAY_DB_NAME}
       POSTGRES_USER: ${PAY_DB_USER}
       POSTGRES_PASSWORD: ${PAY_DB_PASS}
+    env_file:
+      - .env
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PAY_DB_USER}"]
+      test: ["CMD-SHELL", "pg_isready -U ${PAY_DB_USER} -d ${PAY_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
     volumes:
       - payments-db:/var/lib/postgresql/data
     networks: [app-net]
+

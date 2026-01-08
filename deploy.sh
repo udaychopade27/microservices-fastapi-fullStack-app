@@ -39,6 +39,10 @@ run_action() {
       echo "Removing services...."
       dc down
       ;;
+    down-v)
+      echo "Removing services with all volumes also"
+      dc down -v
+      ;;
     *)
       usage
       ;;
@@ -58,7 +62,8 @@ echo "2) build (with cache)"
 echo "3) up (up -d)"
 echo "4) restart"
 echo "5) down"
-read -rp "Enter choice [1-5]: " choice
+echo "6) down -v (remove volumes also)"
+read -rp "Enter choice [1-6]: " choice
 
 case "$choice" in
   1) action="build-nocache" ;;
@@ -66,6 +71,7 @@ case "$choice" in
   3) action="up" ;;
   4) action="restart" ;;
   5) action="down";;
+  6) action="down-v";;
   *) echo "Invalid choice"; exit 1 ;;
 esac
 
