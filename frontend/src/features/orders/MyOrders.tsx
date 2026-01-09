@@ -48,7 +48,7 @@ export default function MyOrders() {
             </div>
 
             <div className="text-right">
-              <p className="font-semibold">${o.total}</p>
+              <p className="font-semibold">${o.total.toFixed(2)}</p>
               <p
                 className={`text-sm ${
                   o.status === 'PAID'
