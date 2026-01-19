@@ -18,3 +18,5 @@ services:
       - inventory
       - orders
       - payment
+      - api-gateway
+    networks: [app-net]

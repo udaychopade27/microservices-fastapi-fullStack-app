@@ -1,26 +1,29 @@
-const API_BASE = '';
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8005';
 
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit & { skipAuth?: boolean } = {}
 ): Promise<T> {
   const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (!options.skipAuth && token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(user?.id ? { 'x-user-id': user.id } : {}),
-      ...(user?.role ? { 'x-user-role': user.role } : {}),
-      ...(options.headers || {})
-    }
+    headers,
   });
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || `HTTP ${res.status}`);
+    throw new Error(text || res.statusText);
   }
 
   return res.json();

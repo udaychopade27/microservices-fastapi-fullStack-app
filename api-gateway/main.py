@@ -1,15 +1,27 @@
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 import httpx
 import os
 import time
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 
 app = FastAPI(title="API Gateway")
+# -----------------------------
+# CORS (VERY IMPORTANT)
+# -----------------------------
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # ok for dev
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-AUTH_URL = os.getenv("AUTH_URL")
-INVENTORY_URL = os.getenv("INVENTORY_URL")
-ORDERS_URL = os.getenv("ORDER_URL")
-PAYMENT_URL = os.getenv("PAYMENT_URL")
+
+# AUTH_URL = os.getenv("AUTH_URL")
+# INVENTORY_URL = os.getenv("INVENTORY_URL")
+# ORDERS_URL = os.getenv("ORDER_URL")
+# PAYMENT_URL = os.getenv("PAYMENT_URL")
 
 # -------------------------
 # Prometheus
@@ -26,56 +38,36 @@ gateway_latency = Histogram(
     ["service"]
 )
 
-# -------------------------
-# Reverse proxy engine
-# -------------------------
-async def proxy(request: Request, target_url: str, service: str):
-    start = time.time()
+# -----------------------------
+# Service map
+# -----------------------------
+SERVICES = {
+    "auth": "http://auth:8000",
+    "inventory": "http://inventory:8001",
+    "orders": "http://orders:8002",
+    "payments": "http://payment:8003",
+}
+
+# -----------------------------
+# Generic Proxy
+# -----------------------------
+@app.api_route("/api/{service}/{path:path}",
+               methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+async def proxy(service: str, path: str, request: Request):
+    if service not in SERVICES:
+        return {"error": "Unknown service"}
+
+    url = f"{SERVICES[service]}/api/{service}/{path}"
 
     async with httpx.AsyncClient() as client:
-        body = await request.body()
-        headers = dict(request.headers)
-        headers.pop("host", None)
-
         resp = await client.request(
-            request.method,
-            f"{target_url}{request.url.path}",
-            params=request.query_params,
-            content=body,
-            headers=headers,
-            timeout=30
+            method=request.method,
+            url=url,
+            headers=dict(request.headers),
+            content=await request.body(),
         )
 
-    duration = time.time() - start
-
-    gateway_requests.labels(service, request.method, resp.status_code).inc()
-    gateway_latency.labels(service).observe(duration)
-
-    return Response(
-        content=resp.content,
-        status_code=resp.status_code,
-        headers=resp.headers
-    )
-
-# -------------------------
-# Routes
-# -------------------------
-@app.api_route("/api/auth/{path:path}", methods=["GET","POST","PUT","DELETE"])
-async def auth_proxy(request: Request, path: str):
-    return await proxy(request, AUTH_URL, "auth")
-
-@app.api_route("/api/inventory/{path:path}", methods=["GET","POST","PUT","DELETE"])
-async def inventory_proxy(request: Request, path: str):
-    return await proxy(request, INVENTORY_URL, "inventory")
-
-@app.api_route("/api/orders/{path:path}", methods=["GET","POST","PUT","DELETE"])
-async def orders_proxy(request: Request, path: str):
-    return await proxy(request, ORDERS_URL, "orders")
-
-@app.api_route("/api/payments/{path:path}", methods=["GET","POST","PUT","DELETE"])
-async def payments_proxy(request: Request, path: str):
-    return await proxy(request, PAYMENT_URL, "payments")
-
+    return resp.json()
 # -------------------------
 # Observability
 # -------------------------

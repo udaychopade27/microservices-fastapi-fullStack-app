@@ -1,16 +1,20 @@
 services:
   auth:
-    ports:
-      - "8000:8000"
+    # ports:
+    #   - "8000:8000"
 
   inventory:
-    ports:
-      - "8001:8001"
+    # ports:
+    #   - "8001:8001"
 
   orders:
-    ports:
-      - "8002:8002"
+    # ports:
+    #   - "8002:8002"
 
   payment:
+    # ports:
+    #   - "8003:8003"
+
+  api-gateway:
     ports:
-      - "8003:8003"
+      - "8005:8080"
