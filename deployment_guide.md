@@ -38,34 +38,15 @@ This configuration must be placed on the host server's Nginx directory (e.g., /e
 ```bash
 server {
     listen 80;
-    server_name _; # Accessible via Server IP
+    server_name _;
 
-    # --- FRONTEND: Routes to React Docker Container ---
     location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass http://127.0.0.1:8004;
     }
 
-    # --- BACKEND: Auth Service ---
-    location /api/auth/ {
-        proxy_pass http://127.0.0.1:8000/api/auth/;
-        proxy_set_header Host $host;
-        proxy_set_header Authorization ""; # Security: Scrub auth for login
-    }
-
-    # --- BACKEND: Inventory Service ---
-    location /api/inventory/ {
-        proxy_pass http://127.0.0.1:8001/api/inventory/;
-        proxy_set_header Host $host;
+    location /api/ {
+        proxy_pass http://127.0.0.1:8005;
         proxy_set_header Authorization $http_authorization;
-    }
-
-    # --- BACKEND: Order Service ---
-    location /api/orders/ {
-        proxy_pass http://127.0.0.1:8002/api/orders/;
-        proxy_set_header Host $host;
     }
 }
 ```
