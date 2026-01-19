@@ -33,29 +33,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  api-gateway:
-    build: ./api-gateway
-    container_name: api-gateway
-    ports:
-      - "8005:8080"
-    env_file:
-      - .env
-    environment:
-      AUTH_URL: http://auth:8000
-      INVENTORY_URL: http://inventory:8001
-      ORDER_URL: http://orders:8002
-      PAYMENT_URL: http://payment:8003
-    depends_on:
-      auth:
-        condition: service_healthy
-      inventory:
-        condition: service_healthy
-      orders:
-        condition: service_healthy
-      payment:
-        condition: service_healthy
-    networks: [app-net]
     
   orders:
     build: ./order-microservice
